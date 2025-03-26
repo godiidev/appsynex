@@ -33,40 +33,42 @@ type DatabaseConfig struct {
 }
 
 type JWTConfig struct {
-	SecretKey string
-	ExpiresIn int
-}func LoadConfig() Config {
-	viper.Setconfigfile(".env")
+	Secret    string
+	ExpiresIn string
+}
+
+func LoadConfig() (*Config, error) {
+	viper.SetConfigFile(".env")
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("Waring: Failed to read the config file: $s\n", err)
+		log.Println("Warning: Failed to read config file:", err)
 	}
 
 	config := &Config{
 		Server: ServerConfig{
-			Port:	 viper.GetString("SERVER_PORT"),
-			Env:    viper.GetString("SERVER_ENV"),
-			LogLevel: viper.GetString("SERVER_LOG_LEVEL"),
+			Port:     viper.GetString("PORT"),
+			Env:      viper.GetString("ENV"),
+			LogLevel: viper.GetString("LOG_LEVEL"),
 		},
 		Database: DatabaseConfig{
-			Host: 		  viper.GetString("DB_HOST"),
-			Port: 		  viper.GetString("DB_PORT"),
-			User: 		  viper.GetString("DB_USER"),
-			Password: 	  viper.GetString("DB_PASSWORD"),
-			Name: 		  viper.GetString("DB_NAME"),
-			Charset: 	  viper.GetString("DB_CHARSET"),
-			MaxIdleConns: viper.GetInt("DB_MAX_IDLE_CONNS"),
-			MaxOpenConns: viper.GetInt("DB_MAX_OPEN_CONNS"),
+			Host:            viper.GetString("DB_HOST"),
+			Port:            viper.GetString("DB_PORT"),
+			User:            viper.GetString("DB_USER"),
+			Password:        viper.GetString("DB_PASS"),
+			Name:            viper.GetString("DB_NAME"),
+			Charset:         viper.GetString("DB_CHARSET"),
+			MaxIdleConns:    viper.GetInt("DB_MAX_IDLE_CONNS"),
+			MaxOpenConns:    viper.GetInt("DB_MAX_OPEN_CONNS"),
 			ConnMaxLifetime: viper.GetDuration("DB_CONN_MAX_LIFETIME"),
 		},
 		JWT: JWTConfig{
-			SecretKey: viper.GetString("JWT_SECRET"),
-			ExpiresIn: viper.GetInt("JWT_EXPIRES_IN"),
+			Secret:    viper.GetString("JWT_SECRET"),
+			ExpiresIn: viper.GetString("JWT_EXPIRES_IN"),
 		},
 	}
 
-	//set default value
+	// Set defaults
 	if config.Server.Port == "" {
 		config.Server.Port = "8080"
 	}
@@ -86,16 +88,16 @@ type JWTConfig struct {
 		config.Database.MaxOpenConns = 100
 	}
 	if config.Database.ConnMaxLifetime == 0 {
-		config.Database.ConnMaxLifetime = 10 * time.Hour
+		config.Database.ConnMaxLifetime = time.Hour
 	}
-	if config.JWT.ExpiresIn == 0 {
+	if config.JWT.ExpiresIn == "" {
 		config.JWT.ExpiresIn = "24h"
 	}
 
 	return config, nil
 }
 
-func (c *DatabaseConfig) GetDSN() string {
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=true&loc=Local",
+func (c *DatabaseConfig) DSN() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=True&loc=Local",
 		c.User, c.Password, c.Host, c.Port, c.Name, c.Charset)
 }
