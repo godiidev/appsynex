@@ -157,44 +157,56 @@ func seedSampleProducts(db *gorm.DB) error {
 	var printedCategory models.ProductCategory
 
 	if err := db.Where("category_name = ?", "Vải Thun Cotton").First(&cottonCategory).Error; err != nil {
+		log.Printf("Error finding cotton category: %v", err)
 		return err
 	}
 	if err := db.Where("category_name = ?", "Vải Thun Polyester").First(&polyCategory).Error; err != nil {
+		log.Printf("Error finding polyester category: %v", err)
 		return err
 	}
 	if err := db.Where("category_name = ?", "Vải Khaki & Kaki").First(&khakiCategory).Error; err != nil {
+		log.Printf("Error finding khaki category: %v", err)
 		return err
 	}
 	if err := db.Where("category_name = ?", "Vải thun pha").First(&mixCategory).Error; err != nil {
+		log.Printf("Error finding mix category: %v", err)
 		return err
 	}
-	if err := db.Where("category_name = ?", "Vải In").First(&printedCategory).Error; err != nil {
+	if err := db.Where("category_name = ?", "Vải in").First(&printedCategory).Error; err != nil {
+		log.Printf("Error finding printed category: %v", err)
 		return err
 	}
 
 	// Get product name IDs
-	var cottonName models.ProductName
-	var cottonPolyName models.ProductName
-	var khakiName models.ProductName
-	var cvcName models.ProductName
-	var polyName models.ProductName
+	var cottonSingleJersey models.ProductName
+	var cottonRib models.ProductName
+	var tcPique models.ProductName
+	var cottonKhaki models.ProductName
+	var polyPique models.ProductName
+	var cottonBack models.ProductName
 
-	if err := db.Where("sku_parent = ?", "SY1015").First(&cottonName).Error; err != nil {
+	if err := db.Where("sku_parent = ?", "SY1015").First(&cottonSingleJersey).Error; err != nil {
+		log.Printf("Error finding cotton single jersey: %v", err)
 		return err
 	}
-	if err := db.Where("sku_parent = ?", "SY1056").First(&cottonPolyName).Error; err != nil {
+	if err := db.Where("sku_parent = ?", "SY1021").First(&cottonRib).Error; err != nil {
+		log.Printf("Error finding cotton rib: %v", err)
 		return err
 	}
-	if err := db.Where("sku_parent = ?", "SY1290").First(&cvcName).Error; err != nil {
+	if err := db.Where("sku_parent = ?", "SY1056").First(&tcPique).Error; err != nil {
+		log.Printf("Error finding TC Pique: %v", err)
 		return err
 	}
-	if err := db.Where("sku_parent = ?", "SY1266").First(&polyName).Error; err != nil {
+	if err := db.Where("sku_parent = ?", "SY1290").First(&cottonBack).Error; err != nil {
+		log.Printf("Error finding cotton back: %v", err)
 		return err
 	}
-	if err := db.Where("sku_parent = ?", "SY1021").First(&cottonName).Error; err != nil {
+	if err := db.Where("sku_parent = ?", "SY1266").First(&polyPique).Error; err != nil {
+		log.Printf("Error finding poly pique: %v", err)
 		return err
 	}
-	if err := db.Where("sku_parent = ?", "SY1362").First(&khakiName).Error; err != nil {
+	if err := db.Where("sku_parent = ?", "SY1362").First(&cottonKhaki).Error; err != nil {
+		log.Printf("Error finding cotton khaki: %v", err)
 		return err
 	}
 
@@ -202,7 +214,7 @@ func seedSampleProducts(db *gorm.DB) error {
 	sampleProducts := []models.SampleProduct{
 		{
 			SKU:               "SY1015205185-WHT",
-			ProductNameID:     cottonName.ID,
+			ProductNameID:     cottonSingleJersey.ID,
 			CategoryID:        cottonCategory.ID,
 			Description:       "Mẫu vải cotton trắng 100%",
 			SampleType:        "Vải mét",
@@ -219,7 +231,7 @@ func seedSampleProducts(db *gorm.DB) error {
 		},
 		{
 			SKU:               "SY1015220180-BLK",
-			ProductNameID:     cottonName.ID,
+			ProductNameID:     cottonSingleJersey.ID,
 			CategoryID:        cottonCategory.ID,
 			Description:       "Mẫu vải cotton đen 100%",
 			SampleType:        "Vải cây",
@@ -236,7 +248,7 @@ func seedSampleProducts(db *gorm.DB) error {
 		},
 		{
 			SKU:               "SY1056245195-3108A",
-			ProductNameID:     cottonPolyName.ID,
+			ProductNameID:     tcPique.ID,
 			CategoryID:        mixCategory.ID,
 			Description:       "Mẫu vải cotton pha polyester pique",
 			SampleType:        "Bền màu phối",
@@ -253,7 +265,7 @@ func seedSampleProducts(db *gorm.DB) error {
 		},
 		{
 			SKU:               "SY1021260160-250307A",
-			ProductNameID:     cottonName.ID,
+			ProductNameID:     cottonRib.ID,
 			CategoryID:        cottonCategory.ID,
 			Description:       "Mẫu vải rib cotton span trắng",
 			SampleType:        "Vải cây",
@@ -270,7 +282,7 @@ func seedSampleProducts(db *gorm.DB) error {
 		},
 		{
 			SKU:               "SY1362270150-NV04",
-			ProductNameID:     khakiName.ID,
+			ProductNameID:     cottonKhaki.ID,
 			CategoryID:        khakiCategory.ID,
 			Description:       "Mẫu vải kaki màu Navy",
 			SampleType:        "Vải mét",
@@ -287,7 +299,7 @@ func seedSampleProducts(db *gorm.DB) error {
 		},
 		{
 			SKU:               "SY1266135160-4610TCX",
-			ProductNameID:     polyName.ID,
+			ProductNameID:     polyPique.ID,
 			CategoryID:        polyCategory.ID,
 			Description:       "Mẫu vải mè poly giá rẻ",
 			SampleType:        "Vải mét",
@@ -304,7 +316,7 @@ func seedSampleProducts(db *gorm.DB) error {
 		},
 		{
 			SKU:               "SY1266200160-4610TCX",
-			ProductNameID:     polyName.ID,
+			ProductNameID:     polyPique.ID,
 			CategoryID:        polyCategory.ID,
 			Description:       "Mẫu vải poly sọc ngang",
 			SampleType:        "Vải mét",
@@ -317,7 +329,7 @@ func seedSampleProducts(db *gorm.DB) error {
 			FiberContent:      "100% Polyester",
 			Source:            "Sợi Poly 150D dệt máy 2 giường kim",
 			SampleLocation:    "Kệ E-3",
-			Barcode:           "1234567895",
+			Barcode:           "1234567896",
 		},
 	}
 
@@ -327,10 +339,12 @@ func seedSampleProducts(db *gorm.DB) error {
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				if err := db.Create(&sample).Error; err != nil {
+					log.Printf("Error creating sample product %s: %v", sample.SKU, err)
 					return err
 				}
 				log.Printf("Created sample product: %s", sample.SKU)
 			} else {
+				log.Printf("Error checking sample product %s: %v", sample.SKU, err)
 				return err
 			}
 		} else {
