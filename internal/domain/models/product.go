@@ -14,8 +14,8 @@ type ProductName struct {
 	CreatedAt     time.Time       `json:"created_at"`
 	UpdatedAt     time.Time       `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt  `gorm:"index" json:"-"`
-	Products      []Product       `json:"products,omitempty"`
-	Samples       []SampleProduct `json:"samples,omitempty"`
+	Products      []Product       `gorm:"foreignKey:ProductNameID" json:"products,omitempty"`
+	Samples       []SampleProduct `gorm:"foreignKey:ProductNameID" json:"samples,omitempty"`
 }
 
 type ProductCategory struct {
@@ -26,8 +26,8 @@ type ProductCategory struct {
 	CreatedAt        time.Time         `json:"created_at"`
 	UpdatedAt        time.Time         `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt    `gorm:"index" json:"-"`
-	Products         []Product         `json:"products,omitempty"`
-	Samples          []SampleProduct   `json:"samples,omitempty"`
+	Products         []Product         `gorm:"foreignKey:CategoryID" json:"products,omitempty"`
+	Samples          []SampleProduct   `gorm:"foreignKey:CategoryID" json:"samples,omitempty"`
 	ParentCategory   *ProductCategory  `gorm:"foreignKey:ParentCategoryID" json:"parent_category,omitempty"`
 	ChildCategories  []ProductCategory `gorm:"foreignKey:ParentCategoryID" json:"child_categories,omitempty"`
 }

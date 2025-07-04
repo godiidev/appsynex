@@ -16,6 +16,7 @@ type SampleProduct struct {
 	Weight            float64         `json:"weight"`
 	Width             float64         `json:"width"`
 	Color             string          `gorm:"size:255" json:"color"`
+	ColorCode         string          `gorm:"size:50" json:"color_code"`
 	Quality           string          `gorm:"type:text" json:"quality"`
 	RemainingQuantity int             `json:"remaining_quantity"`
 	FiberContent      string          `gorm:"size:255" json:"fiber_content"`
