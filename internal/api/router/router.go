@@ -1,3 +1,7 @@
+// File: internal/api/router/router.go  
+// Cập nhật tại: internal/api/router/router.go
+// Mục đích: Thêm routes cho User và Category APIs
+
 package router
 
 import (
@@ -39,10 +43,14 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	// Services
 	jwtService := auth.NewJWTService(cfg.JWT.Secret, cfg.JWT.ExpiresIn)
 	authService := services.NewAuthService(userRepo, roleRepo, jwtService)
+	userService := services.NewUserService(userRepo, roleRepo)
+	categoryService := services.NewCategoryService(productCategoryRepo)
 	sampleService := services.NewSampleService(sampleRepo, productNameRepo, productCategoryRepo)
 
 	// Handlers
 	authHandler := v1.NewAuthHandler(authService)
+	userHandler := v1.NewUserHandler(userService)
+	categoryHandler := v1.NewCategoryHandler(categoryService)
 	sampleHandler := v1.NewSampleHandler(sampleService)
 
 	// API v1 routes
@@ -59,7 +67,26 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 		protected.Use(middleware.Auth(jwtService))
 		{
 			// User routes
-			// Product routes
+			users := protected.Group("/users")
+			{
+				users.GET("", middleware.HasPermission("USER_VIEW"), userHandler.GetAll)
+				users.POST("", middleware.HasPermission("USER_CREATE"), userHandler.Create)
+				users.GET("/:id", middleware.HasPermission("USER_VIEW"), userHandler.GetByID)
+				users.PUT("/:id", middleware.HasPermission("USER_UPDATE"), userHandler.Update)
+				users.DELETE("/:id", middleware.HasPermission("USER_DELETE"), userHandler.Delete)
+				users.POST("/:id/roles", middleware.HasPermission("USER_UPDATE"), userHandler.AssignRoles)
+			}
+
+			// Category routes
+			categories := protected.Group("/categories")
+			{
+				categories.GET("", middleware.HasPermission("PRODUCT_VIEW"), categoryHandler.GetAll)
+				categories.POST("", middleware.HasPermission("PRODUCT_CREATE"), categoryHandler.Create)
+				categories.GET("/:id", middleware.HasPermission("PRODUCT_VIEW"), categoryHandler.GetByID)
+				categories.PUT("/:id", middleware.HasPermission("PRODUCT_UPDATE"), categoryHandler.Update)
+				categories.DELETE("/:id", middleware.HasPermission("PRODUCT_DELETE"), categoryHandler.Delete)
+			}
+
 			// Sample routes
 			samples := protected.Group("/samples")
 			{
@@ -69,8 +96,8 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				samples.PUT("/:id", middleware.HasPermission("SAMPLE_UPDATE"), sampleHandler.Update)
 				samples.DELETE("/:id", middleware.HasPermission("SAMPLE_DELETE"), sampleHandler.Delete)
 			}
-			// Customer routes
-			// Order routes
+
+			// Future routes: Orders, Customers, Warehouses, etc.
 		}
 	}
 
