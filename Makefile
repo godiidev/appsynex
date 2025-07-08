@@ -1,8 +1,8 @@
 # File: Makefile
-# Tạo tại: Makefile (root của project)
-# Mục đích: Các lệnh tiện ích để build, run, test project
+# Tạo tại: Makefile (root của project)  
+# Mục đích: Các lệnh tiện ích để build, run, test project với enhanced permission system
 
-.PHONY: help build run test clean migrate-up migrate-down seed docker-up docker-down
+.PHONY: help build run test clean setup-db seed docker-up docker-down
 
 # Variables
 BINARY_NAME=appsynex-api
@@ -34,18 +34,13 @@ clean: ## Clean build files
 	@rm -rf $(BUILD_DIR)
 	@go clean
 
-migrate-up: ## Run up migrations
-	@echo "Running up migrations..."
-	@go run scripts/migrate.go up
+setup-db: ## Setup database with migrations and seed data
+	@echo "Setting up database..."
+	@go run scripts/setup.go
 
-migrate-down: ## Run down migrations
-	@echo "Running down migrations..."
-	@go run scripts/migrate.go down
-
-seed: ## Run database seeding
+seed: ## Run database seeding only
 	@echo "Running database seeding..."
-	@go run scripts/seed.go
-	@go run scripts/seed_sample_data.go
+	@go run scripts/seed_enhanced_permissions.go
 
 docker-up: ## Start docker containers
 	@echo "Starting docker containers..."
@@ -71,141 +66,106 @@ dev: ## Start development environment
 	@echo "Starting development environment..."
 	@make docker-up
 	@sleep 10
-	@make migrate-up
-	@make seed
+	@make setup-db
 	@make run
 
 setup: ## Setup project for first time
-	@echo "Setting up project..."
+	@echo "Setting up project for first time..."
+	@echo "1. Copying environment file..."
 	@cp .env.example .env
+	@echo "2. Installing dependencies..."
 	@make install-deps
+	@echo "3. Starting Docker services..."
+	@make docker-up
+	@echo "4. Waiting for database to be ready..."
+	@sleep 15
+	@echo "5. Setting up database and seeding data..."
+	@make setup-db
+	@echo ""
+	@echo "Setup completed! You can now:"
+	@echo "  - Run 'make run' to start the server"
+	@echo "  - Login with username: admin, password: admin123"
+	@echo "  - Access the API at http://localhost:8080"
+
+reset-db: ## Reset database (WARNING: This will delete all data)
+	@echo "WARNING: This will delete all data in the database!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@echo "Resetting database..."
+	@make docker-down
+	@docker volume rm appsynex_mysql_data || true
 	@make docker-up
 	@sleep 15
-	@make migrate-up
-	@make seed
-	@echo "Setup completed! Run 'make run' to start the server"
+	@make setup-db
+	@echo "Database reset completed!"
 
----
+logs: ## Show application logs
+	@docker-compose logs -f api
 
-# File: build.sh
-# Tạo tại: build.sh (root của project)
-# Mục đích: Script build cho production
+mysql-shell: ## Access MySQL shell
+	@docker-compose exec mysql mysql -u root -prootpassword appsynex
 
-#!/bin/bash
+status: ## Show status of services
+	@echo "Docker services status:"
+	@docker-compose ps
+	@echo ""
+	@echo "Database connection test:"
+	@docker-compose exec mysql mysqladmin -u root -prootpassword ping
 
-# Build script for AppSynex API
-set -e
+backup-db: ## Backup database
+	@echo "Creating database backup..."
+	@mkdir -p backups
+	@docker-compose exec mysql mysqldump -u root -prootpassword appsynex > backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "Backup completed in backups/ directory"
 
-echo "Starting build process..."
+format: ## Format Go code
+	@echo "Formatting Go code..."
+	@go fmt ./...
+	@echo "Code formatted"
 
-# Clean previous builds
-echo "Cleaning previous builds..."
-rm -rf bin/
-mkdir -p bin/
+lint: ## Run linter
+	@echo "Running linter..."
+	@golangci-lint run ./...
 
-# Build for Linux (production)
-echo "Building for Linux..."
-GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o bin/appsynex-api-linux ./cmd/api
+security-check: ## Run security checks
+	@echo "Running security checks..."
+	@gosec ./...
 
-# Build for Windows (development)
-echo "Building for Windows..."
-GOOS=windows GOARCH=amd64 go build -ldflags="-w -s" -o bin/appsynex-api-windows.exe ./cmd/api
+mod-tidy: ## Tidy go modules
+	@echo "Tidying go modules..."
+	@go mod tidy
+	@echo "Modules tidied"
 
-# Build for macOS (development)
-echo "Building for macOS..."
-GOOS=darwin GOARCH=amd64 go build -ldflags="-w -s" -o bin/appsynex-api-macos ./cmd/api
+generate: ## Generate code (if needed)
+	@echo "Generating code..."
+	@go generate ./...
 
-echo "Build completed successfully!"
-echo "Binaries available in bin/ directory:"
-ls -la bin/
+deps-update: ## Update dependencies
+	@echo "Updating dependencies..."
+	@go get -u ./...
+	@go mod tidy
+	@echo "Dependencies updated"
 
----
+release: ## Build release version
+	@echo "Building release version..."
+	@make clean
+	@mkdir -p $(BUILD_DIR)
+	@CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
+	@CGO_ENABLED=0 GOOS=windows go build -ldflags="-w -s" -o $(BUILD_DIR)/$(BINARY_NAME)-windows.exe $(MAIN_PATH)
+	@CGO_ENABLED=0 GOOS=darwin go build -ldflags="-w -s" -o $(BUILD_DIR)/$(BINARY_NAME)-macos $(MAIN_PATH)
+	@echo "Release builds completed in $(BUILD_DIR)/"
 
-# File: deploy.sh  
-# Tạo tại: deploy.sh (root của project)
-# Mục đích: Script deploy lên aaPanel
+check-env: ## Check if .env file exists
+	@if [ ! -f .env ]; then \
+		echo "Error: .env file not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
 
-#!/bin/bash
+serve: check-env ## Start the server (alias for run)
+	@make run
 
-# Deploy script for aaPanel
-set -e
-
-SERVER_HOST=${1:-"your-server-ip"}
-SERVER_USER=${2:-"root"}
-APP_DIR="/www/wwwroot/appsynex-api"
-
-echo "Deploying to $SERVER_HOST..."
-
-# Build application
-echo "Building application..."
-make build
-
-# Create deployment package
-echo "Creating deployment package..."
-tar -czf appsynex-api.tar.gz bin/ migrations/ .env.example
-
-# Upload to server
-echo "Uploading to server..."
-scp appsynex-api.tar.gz $SERVER_USER@$SERVER_HOST:/tmp/
-
-# Deploy on server
-echo "Deploying on server..."
-ssh $SERVER_USER@$SERVER_HOST << 'EOF'
-cd /tmp
-tar -xzf appsynex-api.tar.gz
-
-# Stop existing service
-systemctl stop appsynex-api || true
-
-# Backup current version
-if [ -d "/www/wwwroot/appsynex-api" ]; then
-    mv /www/wwwroot/appsynex-api /www/wwwroot/appsynex-api.backup.$(date +%Y%m%d_%H%M%S)
-fi
-
-# Create app directory
-mkdir -p /www/wwwroot/appsynex-api
-cd /www/wwwroot/appsynex-api
-
-# Move files
-mv /tmp/bin ./
-mv /tmp/migrations ./
-mv /tmp/.env.example ./
-
-# Set permissions
-chmod +x bin/appsynex-api-linux
-chown -R www:www /www/wwwroot/appsynex-api
-
-# Setup systemd service
-cat > /etc/systemd/system/appsynex-api.service << 'SERVICE_EOF'
-[Unit]
-Description=AppSynex API Server
-After=network.target
-
-[Service]
-Type=simple
-User=www
-Group=www
-WorkingDirectory=/www/wwwroot/appsynex-api
-ExecStart=/www/wwwroot/appsynex-api/bin/appsynex-api-linux
-Restart=always
-RestartSec=5
-
-Environment=PORT=8080
-Environment=ENV=production
-
-[Install]
-WantedBy=multi-user.target
-SERVICE_EOF
-
-# Reload systemd and start service
-systemctl daemon-reload
-systemctl enable appsynex-api
-systemctl start appsynex-api
-
-echo "Deployment completed successfully!"
-EOF
-
-# Cleanup
-rm -f appsynex-api.tar.gz
-
-echo "Deployment script completed!"
+quick-start: ## Quick start for existing setup
+	@echo "Quick starting AppSynex API..."
+	@make docker-up
+	@sleep 5
+	@make run

@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/godiidev/appsynex/internal/domain/models"
 	"github.com/godiidev/appsynex/internal/dto/request"
 	"github.com/godiidev/appsynex/internal/dto/response"
 	"github.com/godiidev/appsynex/internal/repository/interfaces"
@@ -18,16 +17,18 @@ type AuthService interface {
 }
 
 type authService struct {
-	userRepo   interfaces.UserRepository
-	roleRepo   interfaces.RoleRepository
-	jwtService auth.JWTService
+	userRepo       interfaces.UserRepository
+	roleRepo       interfaces.RoleRepository
+	permissionRepo interfaces.PermissionRepository
+	jwtService     auth.JWTService
 }
 
-func NewAuthService(userRepo interfaces.UserRepository, roleRepo interfaces.RoleRepository, jwtService auth.JWTService) AuthService {
+func NewAuthService(userRepo interfaces.UserRepository, roleRepo interfaces.RoleRepository, permissionRepo interfaces.PermissionRepository, jwtService auth.JWTService) AuthService {
 	return &authService{
-		userRepo:   userRepo,
-		roleRepo:   roleRepo,
-		jwtService: jwtService,
+		userRepo:       userRepo,
+		roleRepo:       roleRepo,
+		permissionRepo: permissionRepo,
+		jwtService:     jwtService,
 	}
 }
 
@@ -49,30 +50,26 @@ func (s *authService) Login(req request.LoginRequest) (*response.LoginResponse, 
 		return nil, err
 	}
 
-	// Create roles and permissions lists
+	// Create roles list
 	roles := make([]string, 0)
 	var permissions []auth.Permission
 
 	for _, role := range userWithRoles.Roles {
 		roles = append(roles, role.RoleName)
+	}
 
-		// Get role with permissions
-		roleWithPermissions, err := s.roleRepo.FindByIDWithPermissions(role.ID)
-		if err != nil {
-			continue
-		}
-
-		for _, p := range roleWithPermissions.Permissions {
-			// Find module from role_permission
-			var rp models.RolePermission
-			if err := s.roleRepo.GetDB().Where("role_id = ? AND permission_id = ?", role.ID, p.ID).First(&rp).Error; err != nil {
-				continue
+	// Get user's effective permissions if permission repo is available
+	if s.permissionRepo != nil {
+		effectivePerms, err := s.permissionRepo.GetUserEffectivePermissions(user.ID)
+		if err == nil {
+			for _, p := range effectivePerms {
+				permissions = append(permissions, auth.Permission{
+					Name:   p.PermissionName,
+					Module: p.Module,
+				})
 			}
-
-			permissions = append(permissions, auth.Permission{
-				Name:   p.PermissionName,
-				Module: rp.Module,
-			})
+		} else {
+			log.Printf("Warning: Could not get effective permissions for user %d: %v", user.ID, err)
 		}
 	}
 

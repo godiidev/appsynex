@@ -17,20 +17,9 @@ type Role struct {
 	Permissions []Permission   `gorm:"many2many:role_permissions;" json:"permissions,omitempty"`
 }
 
-type Permission struct {
-	ID             uint           `gorm:"primaryKey" json:"id"`
-	PermissionName string         `gorm:"size:100;uniqueIndex" json:"permission_name"`
-	Description    string         `gorm:"type:text" json:"description"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
-	Roles          []Role         `gorm:"many2many:role_permissions;" json:"roles,omitempty"`
-}
-
-type RolePermission struct {
-	RoleID       uint   `gorm:"primaryKey"`
-	PermissionID uint   `gorm:"primaryKey"`
-	Module       string `gorm:"size:100"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+type UserRole struct {
+	UserID    uint `gorm:"primaryKey"`
+	RoleID    uint `gorm:"primaryKey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

@@ -29,7 +29,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
-			"status": "ok",
+			"status":  "ok",
 			"version": "1.0.0",
 		})
 	})
@@ -44,7 +44,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 
 	// Initialize services
 	jwtService := auth.NewJWTService(cfg.JWT.Secret, cfg.JWT.ExpiresIn)
-	authService := services.NewAuthService(userRepo, roleRepo, jwtService)
+	authService := services.NewAuthService(userRepo, roleRepo, permissionRepo, jwtService)
 	userService := services.NewUserService(userRepo, roleRepo)
 	permissionService := services.NewPermissionService(permissionRepo, roleRepo, userRepo)
 	categoryService := services.NewCategoryService(productCategoryRepo)
@@ -100,10 +100,10 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				), userHandler.GetByID)
 				users.PUT("/:id", permMiddleware.RequirePermission("USER", "UPDATE"), userHandler.Update)
 				users.DELETE("/:id", permMiddleware.RequirePermission("USER", "DELETE"), userHandler.Delete)
-				
+
 				// User role assignment
 				users.POST("/:id/roles", permMiddleware.RequirePermission("USER", "ASSIGN_ROLES"), userHandler.AssignRoles)
-				
+
 				// User permission management
 				users.GET("/:userId/permissions", permMiddleware.RequirePermission("USER", "VIEW"), permissionHandler.GetUserPermissions)
 				users.GET("/:userId/effective-permissions", permMiddleware.RequirePermission("USER", "VIEW"), permissionHandler.GetUserEffectivePermissions)
@@ -134,7 +134,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 					// TODO: Implement role deletion
 					c.JSON(200, gin.H{"message": "Role deletion endpoint"})
 				})
-				
+
 				// Role permission management
 				roles.GET("/:roleId/permissions", permMiddleware.RequirePermission("ROLE", "VIEW"), permissionHandler.GetRolePermissions)
 				roles.POST("/:roleId/permissions", permMiddleware.RequirePermission("ROLE", "ASSIGN_PERMISSIONS"), permissionHandler.AssignPermissionsToRole)
@@ -184,7 +184,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				samples.GET("/:id", permMiddleware.RequirePermission("SAMPLE", "VIEW"), sampleHandler.GetByID)
 				samples.PUT("/:id", permMiddleware.RequirePermission("SAMPLE", "UPDATE"), sampleHandler.Update)
 				samples.DELETE("/:id", permMiddleware.RequirePermission("SAMPLE", "DELETE"), sampleHandler.Delete)
-				
+
 				// Additional sample operations
 				samples.POST("/:id/dispatch", permMiddleware.RequirePermission("SAMPLE", "DISPATCH"), func(c *gin.Context) {
 					// TODO: Implement sample dispatch
