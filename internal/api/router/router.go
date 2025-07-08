@@ -111,7 +111,7 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				users.DELETE("/:id/permissions/:permissionId", permMiddleware.RequirePermission("USER", "ASSIGN_PERMISSIONS"), permissionHandler.RevokeUserPermission)
 			}
 
-			// Role Management Routes
+			// Role Management Routes - FIXED: Sử dụng consistent parameter name
 			roles := protected.Group("/roles")
 			{
 				roles.GET("", permMiddleware.RequirePermission("ROLE", "VIEW"), func(c *gin.Context) {
@@ -135,10 +135,10 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 					c.JSON(200, gin.H{"message": "Role deletion endpoint"})
 				})
 
-				// Role permission management
-				roles.GET("/:roleId/permissions", permMiddleware.RequirePermission("ROLE", "VIEW"), permissionHandler.GetRolePermissions)
-				roles.POST("/:roleId/permissions", permMiddleware.RequirePermission("ROLE", "ASSIGN_PERMISSIONS"), permissionHandler.AssignPermissionsToRole)
-				roles.DELETE("/:roleId/permissions", permMiddleware.RequirePermission("ROLE", "ASSIGN_PERMISSIONS"), permissionHandler.RemovePermissionsFromRole)
+				// FIXED: Role permission management - sử dụng cùng parameter name ":id"
+				roles.GET("/:id/permissions", permMiddleware.RequirePermission("ROLE", "VIEW"), permissionHandler.GetRolePermissions)
+				roles.POST("/:id/permissions", permMiddleware.RequirePermission("ROLE", "ASSIGN_PERMISSIONS"), permissionHandler.AssignPermissionsToRole)
+				roles.DELETE("/:id/permissions", permMiddleware.RequirePermission("ROLE", "ASSIGN_PERMISSIONS"), permissionHandler.RemovePermissionsFromRole)
 			}
 
 			// Product Category Management Routes
