@@ -1,3 +1,6 @@
+// File: internal/domain/services/sample.go
+// Complete and optimized version
+
 package services
 
 import (
@@ -45,28 +48,10 @@ func (s *sampleService) GetSamples(req request.SampleFilterRequest) (*response.P
 		req.Limit = 10
 	}
 
-	// Create filters map
-	filters := make(map[string]interface{})
-	if req.WeightMin > 0 {
-		filters["weight_min"] = req.WeightMin
-	}
-	if req.WeightMax > 0 {
-		filters["weight_max"] = req.WeightMax
-	}
-	if req.WidthMin > 0 {
-		filters["width_min"] = req.WidthMin
-	}
-	if req.WidthMax > 0 {
-		filters["width_max"] = req.WidthMax
-	}
-	if req.SampleType != "" {
-		filters["sample_type"] = req.SampleType
-	}
-	if req.Color != "" {
-		filters["color"] = req.Color
-	}
+	// Build filters map
+	filters := s.buildFilters(req)
 
-	// Get samples from repository
+	// Get samples from repository (với Preload relationships)
 	samples, total, err := s.sampleRepo.FindAll(req.Page, req.Limit, req.Search, req.Category, filters)
 	if err != nil {
 		return nil, err
@@ -75,7 +60,7 @@ func (s *sampleService) GetSamples(req request.SampleFilterRequest) (*response.P
 	// Convert to response DTOs
 	items := make([]interface{}, len(samples))
 	for i, sample := range samples {
-		items[i] = convertSampleToResponse(&sample)
+		items[i] = s.convertSampleToResponse(&sample)
 	}
 
 	totalPages := int(math.Ceil(float64(total) / float64(req.Limit)))
@@ -95,7 +80,7 @@ func (s *sampleService) GetSampleByID(id uint) (*response.SampleResponse, error)
 		return nil, errors.New("sample not found")
 	}
 
-	return convertSampleToResponse(sample), nil
+	return s.convertSampleToResponse(sample), nil
 }
 
 func (s *sampleService) CreateSample(req request.CreateSampleRequest) (*response.SampleResponse, error) {
@@ -140,13 +125,13 @@ func (s *sampleService) CreateSample(req request.CreateSampleRequest) (*response
 		return nil, err
 	}
 
-	// Get complete sample with related data
+	// Get complete sample with related data (Preload sẽ load relationships)
 	createdSample, err := s.sampleRepo.FindByID(sample.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertSampleToResponse(createdSample), nil
+	return s.convertSampleToResponse(createdSample), nil
 }
 
 func (s *sampleService) UpdateSample(id uint, req request.UpdateSampleRequest) (*response.SampleResponse, error) {
@@ -223,13 +208,13 @@ func (s *sampleService) UpdateSample(id uint, req request.UpdateSampleRequest) (
 		return nil, err
 	}
 
-	// Get updated sample with related data
+	// Get updated sample with related data (Preload sẽ load relationships)
 	updatedSample, err := s.sampleRepo.FindByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertSampleToResponse(updatedSample), nil
+	return s.convertSampleToResponse(updatedSample), nil
 }
 
 func (s *sampleService) DeleteSample(id uint) error {
@@ -242,9 +227,33 @@ func (s *sampleService) DeleteSample(id uint) error {
 	return s.sampleRepo.Delete(id)
 }
 
-// Helper function to convert model to response DTO
-func convertSampleToResponse(sample *models.SampleProduct) *response.SampleResponse {
-	return &response.SampleResponse{
+// Helper function to build filters map
+func (s *sampleService) buildFilters(req request.SampleFilterRequest) map[string]interface{} {
+	filters := make(map[string]interface{})
+	if req.WeightMin > 0 {
+		filters["weight_min"] = req.WeightMin
+	}
+	if req.WeightMax > 0 {
+		filters["weight_max"] = req.WeightMax
+	}
+	if req.WidthMin > 0 {
+		filters["width_min"] = req.WidthMin
+	}
+	if req.WidthMax > 0 {
+		filters["width_max"] = req.WidthMax
+	}
+	if req.SampleType != "" {
+		filters["sample_type"] = req.SampleType
+	}
+	if req.Color != "" {
+		filters["color"] = req.Color
+	}
+	return filters
+}
+
+// Enhanced helper function to convert model to response DTO
+func (s *sampleService) convertSampleToResponse(sample *models.SampleProduct) *response.SampleResponse {
+	sampleResponse := &response.SampleResponse{
 		ID:                sample.ID,
 		SKU:               sample.SKU,
 		ProductNameID:     sample.ProductNameID,
@@ -263,15 +272,51 @@ func convertSampleToResponse(sample *models.SampleProduct) *response.SampleRespo
 		Barcode:           sample.Barcode,
 		CreatedAt:         sample.CreatedAt,
 		UpdatedAt:         sample.UpdatedAt,
-		ProductName: &response.ProductNameResponse{
+	}
+
+	// Auto-populate ProductName if loaded (check if relationship exists)
+	if sample.ProductName.ID != 0 {
+		sampleResponse.ProductName = &response.ProductNameResponse{
 			ID:            sample.ProductName.ID,
 			ProductNameVI: sample.ProductName.ProductNameVI,
 			ProductNameEN: sample.ProductName.ProductNameEN,
 			SKUParent:     sample.ProductName.SKUParent,
-		},
-		Category: &response.CategoryResponse{
-			ID:           sample.Category.ID,
-			CategoryName: sample.Category.CategoryName,
-		},
+		}
+	} else {
+		// Fallback: Load product name manually if not preloaded
+		if productName, err := s.productNameRepo.FindByID(sample.ProductNameID); err == nil {
+			sampleResponse.ProductName = &response.ProductNameResponse{
+				ID:            productName.ID,
+				ProductNameVI: productName.ProductNameVI,
+				ProductNameEN: productName.ProductNameEN,
+				SKUParent:     productName.SKUParent,
+			}
+		}
 	}
+
+	// Auto-populate Category if loaded - Use existing CategoryResponse struct
+	if sample.Category.ID != 0 {
+		sampleResponse.Category = &response.CategoryResponse{
+			ID:               sample.Category.ID,
+			CategoryName:     sample.Category.CategoryName,
+			ParentCategoryID: sample.Category.ParentCategoryID,
+			Description:      sample.Category.Description,
+			CreatedAt:        sample.Category.CreatedAt,
+			UpdatedAt:        sample.Category.UpdatedAt,
+		}
+	} else {
+		// Fallback: Load category manually if not preloaded
+		if category, err := s.categoryRepo.FindByID(sample.CategoryID); err == nil {
+			sampleResponse.Category = &response.CategoryResponse{
+				ID:               category.ID,
+				CategoryName:     category.CategoryName,
+				ParentCategoryID: category.ParentCategoryID,
+				Description:      category.Description,
+				CreatedAt:        category.CreatedAt,
+				UpdatedAt:        category.UpdatedAt,
+			}
+		}
+	}
+
+	return sampleResponse
 }

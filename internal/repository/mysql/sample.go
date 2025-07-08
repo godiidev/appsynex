@@ -1,3 +1,6 @@
+// File: internal/repository/mysql/sample.go
+// Fixed để auto-load relationships
+
 package mysql
 
 import (
@@ -55,11 +58,12 @@ func (r *sampleRepository) FindAll(page, limit int, search, category string, fil
 		return nil, 0, err
 	}
 
-	// Apply pagination
+	// Apply pagination and ALWAYS preload relationships
 	offset := (page - 1) * limit
 	err := query.Offset(offset).Limit(limit).
-		Preload("ProductName").
-		Preload("Category").
+		Preload("ProductName").   // Auto load product name
+		Preload("Category").      // Auto load category
+		Order("created_at DESC"). // Order by newest first
 		Find(&samples).Error
 
 	return samples, count, err
@@ -67,6 +71,7 @@ func (r *sampleRepository) FindAll(page, limit int, search, category string, fil
 
 func (r *sampleRepository) FindByID(id uint) (*models.SampleProduct, error) {
 	var sample models.SampleProduct
+	// ALWAYS preload relationships when finding by ID
 	if err := r.db.Preload("ProductName").Preload("Category").First(&sample, id).Error; err != nil {
 		return nil, err
 	}
@@ -75,7 +80,8 @@ func (r *sampleRepository) FindByID(id uint) (*models.SampleProduct, error) {
 
 func (r *sampleRepository) FindBySKU(sku string) (*models.SampleProduct, error) {
 	var sample models.SampleProduct
-	if err := r.db.Where("sku = ?", sku).First(&sample).Error; err != nil {
+	// ALWAYS preload relationships when finding by SKU
+	if err := r.db.Preload("ProductName").Preload("Category").Where("sku = ?", sku).First(&sample).Error; err != nil {
 		return nil, err
 	}
 	return &sample, nil
