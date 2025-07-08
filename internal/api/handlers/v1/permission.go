@@ -212,7 +212,7 @@ func (h *PermissionHandler) DeletePermission(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /roles/{roleId}/permissions [post]
 func (h *PermissionHandler) AssignPermissionsToRole(c *gin.Context) {
-	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 64)
+	roleID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID format"})
 		return
@@ -230,9 +230,9 @@ func (h *PermissionHandler) AssignPermissionsToRole(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
 		return
 	}
-	
+
 	claims := userClaims.(*auth.JWTClaims)
-	
+
 	req.RoleID = uint(roleID)
 	if err := h.permissionService.AssignPermissionsToRole(req.RoleID, req.PermissionIDs, claims.ID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -258,7 +258,7 @@ func (h *PermissionHandler) AssignPermissionsToRole(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /roles/{roleId}/permissions [delete]
 func (h *PermissionHandler) RemovePermissionsFromRole(c *gin.Context) {
-	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 64)
+	roleID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID format"})
 		return
@@ -295,7 +295,7 @@ func (h *PermissionHandler) RemovePermissionsFromRole(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /roles/{roleId}/permissions [get]
 func (h *PermissionHandler) GetRolePermissions(c *gin.Context) {
-	roleID, err := strconv.ParseUint(c.Param("roleId"), 10, 64)
+	roleID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID format"})
 		return
@@ -326,7 +326,7 @@ func (h *PermissionHandler) GetRolePermissions(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /users/{userId}/permissions [post]
 func (h *PermissionHandler) GrantUserPermission(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 64)
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
 		return
@@ -344,12 +344,12 @@ func (h *PermissionHandler) GrantUserPermission(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
 		return
 	}
-	
+
 	claims := userClaims.(*auth.JWTClaims)
-	
+
 	req.UserID = uint(userID)
 	req.GrantedBy = claims.ID
-	
+
 	if err := h.permissionService.GrantUserPermission(req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -374,7 +374,7 @@ func (h *PermissionHandler) GrantUserPermission(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /users/{userId}/permissions/{permissionId} [delete]
 func (h *PermissionHandler) RevokeUserPermission(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 64)
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
 		return
@@ -410,7 +410,7 @@ func (h *PermissionHandler) RevokeUserPermission(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /users/{userId}/permissions [get]
 func (h *PermissionHandler) GetUserPermissions(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 64)
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
 		return
@@ -441,7 +441,7 @@ func (h *PermissionHandler) GetUserPermissions(c *gin.Context) {
 // @Failure     500 {object} response.ErrorResponse
 // @Router      /users/{userId}/effective-permissions [get]
 func (h *PermissionHandler) GetUserEffectivePermissions(c *gin.Context) {
-	userID, err := strconv.ParseUint(c.Param("userId"), 10, 64)
+	userID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
 		return
@@ -522,7 +522,7 @@ func (h *PermissionHandler) BulkAssignPermissions(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
 		return
 	}
-	
+
 	claims := userClaims.(*auth.JWTClaims)
 	req.GrantedBy = claims.ID
 
@@ -564,7 +564,7 @@ func (h *PermissionHandler) CloneRolePermissions(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found in context"})
 		return
 	}
-	
+
 	claims := userClaims.(*auth.JWTClaims)
 	req.GrantedBy = claims.ID
 

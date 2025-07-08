@@ -1,6 +1,6 @@
 // File: internal/api/router/router.go
 // Cập nhật tại: internal/api/router/router.go
-// Mục đích: Updated router với enhanced permission system
+// Mục đích: Fixed router với enhanced permission system (no route conflicts)
 
 package router
 
@@ -104,11 +104,11 @@ func SetupRouter(db *gorm.DB, cfg *config.Config) *gin.Engine {
 				// User role assignment
 				users.POST("/:id/roles", permMiddleware.RequirePermission("USER", "ASSIGN_ROLES"), userHandler.AssignRoles)
 
-				// User permission management
-				users.GET("/:userId/permissions", permMiddleware.RequirePermission("USER", "VIEW"), permissionHandler.GetUserPermissions)
-				users.GET("/:userId/effective-permissions", permMiddleware.RequirePermission("USER", "VIEW"), permissionHandler.GetUserEffectivePermissions)
-				users.POST("/:userId/permissions", permMiddleware.RequirePermission("USER", "ASSIGN_PERMISSIONS"), permissionHandler.GrantUserPermission)
-				users.DELETE("/:userId/permissions/:permissionId", permMiddleware.RequirePermission("USER", "ASSIGN_PERMISSIONS"), permissionHandler.RevokeUserPermission)
+				// User permission management - FIXED: use same :id parameter
+				users.GET("/:id/permissions", permMiddleware.RequirePermission("USER", "VIEW"), permissionHandler.GetUserPermissions)
+				users.GET("/:id/effective-permissions", permMiddleware.RequirePermission("USER", "VIEW"), permissionHandler.GetUserEffectivePermissions)
+				users.POST("/:id/permissions", permMiddleware.RequirePermission("USER", "ASSIGN_PERMISSIONS"), permissionHandler.GrantUserPermission)
+				users.DELETE("/:id/permissions/:permissionId", permMiddleware.RequirePermission("USER", "ASSIGN_PERMISSIONS"), permissionHandler.RevokeUserPermission)
 			}
 
 			// Role Management Routes
