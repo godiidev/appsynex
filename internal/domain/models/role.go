@@ -17,9 +17,10 @@ type Role struct {
 	Permissions []Permission   `gorm:"many2many:role_permissions;" json:"permissions,omitempty"`
 }
 
+// UserRole junction table - defined here to avoid duplication
 type UserRole struct {
-	UserID    uint `gorm:"primaryKey"`
-	RoleID    uint `gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	UserID    uint      `gorm:"primaryKey" json:"user_id"`
+	RoleID    uint      `gorm:"primaryKey" json:"role_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

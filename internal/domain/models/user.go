@@ -20,9 +20,4 @@ type User struct {
 	Roles         []Role         `gorm:"many2many:user_roles;" json:"roles,omitempty"`
 }
 
-type UserRole struct {
-	UserID    uint `gorm:"primaryKey"`
-	RoleID    uint `gorm:"primaryKey"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
+// Note: UserRole struct is defined in role.go to avoid duplication

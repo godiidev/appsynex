@@ -32,11 +32,6 @@ type ProductNameResponse struct {
 	SKUParent     string `json:"sku_parent"`
 }
 
-type CategoryResponse struct {
-	ID           uint   `json:"id"`
-	CategoryName string `json:"category_name"`
-}
-
 type PaginatedResponse struct {
 	Items      []interface{} `json:"items"`
 	TotalItems int64         `json:"total_items"`

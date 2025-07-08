@@ -58,7 +58,7 @@ func (s *authService) Login(req request.LoginRequest) (*response.LoginResponse, 
 		roles = append(roles, role.RoleName)
 	}
 
-	// Get user's effective permissions if permission repo is available
+	// Get user's effective permissions
 	if s.permissionRepo != nil {
 		effectivePerms, err := s.permissionRepo.GetUserEffectivePermissions(user.ID)
 		if err == nil {

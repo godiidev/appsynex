@@ -1,5 +1,5 @@
 // File: pkg/utils/string.go
-// Tạo tại: pkg/utils/string.go
+// Tạo tại: pkg/utils/string.go (fix typo từ untils -> utils)
 // Mục đích: Utility functions for string operations
 
 package utils
@@ -31,7 +31,7 @@ func ToCamelCase(str string) string {
 	if len(words) == 0 {
 		return ""
 	}
-	
+
 	result := strings.ToLower(words[0])
 	for i := 1; i < len(words); i++ {
 		if len(words[i]) > 0 {

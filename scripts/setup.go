@@ -1,6 +1,6 @@
 // File: scripts/setup.go
 // Tạo tại: scripts/setup.go
-// Mục đích: Script setup toàn bộ database và seed data
+// Mục đích: Complete setup với enhanced permission system
 
 package main
 
@@ -17,56 +17,61 @@ import (
 )
 
 func main() {
-	log.Println("Starting database setup...")
+	log.Println("🚀 Setting up AppSynex with enhanced permission system...")
 
 	// Load configuration
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("❌ Failed to load configuration: %v", err)
 	}
 
 	// Connect to database
 	db, err := mysql.NewDBConnection(&cfg.Database)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("❌ Failed to connect to database: %v", err)
 	}
+
+	log.Println("✅ Connected to database")
 
 	// Auto migrate all models
 	if err := autoMigrate(db); err != nil {
-		log.Fatalf("Failed to run auto migrations: %v", err)
+		log.Fatalf("❌ Auto migration failed: %v", err)
 	}
 
 	// Seed enhanced permissions
 	if err := seedEnhancedPermissions(db); err != nil {
-		log.Fatalf("Failed to seed enhanced permissions: %v", err)
+		log.Fatalf("❌ Failed to seed enhanced permissions: %v", err)
 	}
 
 	// Seed roles with permissions
 	if err := seedRolesWithPermissions(db); err != nil {
-		log.Fatalf("Failed to seed roles with permissions: %v", err)
+		log.Fatalf("❌ Failed to seed roles with permissions: %v", err)
 	}
 
 	// Seed admin user
 	if err := seedAdminUser(db); err != nil {
-		log.Fatalf("Failed to seed admin user: %v", err)
+		log.Fatalf("❌ Failed to seed admin user: %v", err)
 	}
 
 	// Seed sample data
 	if err := seedSampleData(db); err != nil {
-		log.Fatalf("Failed to seed sample data: %v", err)
+		log.Fatalf("❌ Failed to seed sample data: %v", err)
 	}
 
-	log.Println("Database setup completed successfully!")
-	fmt.Println("\nDefault admin credentials:")
-	fmt.Println("Username: admin")
-	fmt.Println("Password: admin123")
-	fmt.Println("\nServer can be started with: go run cmd/api/main.go")
+	log.Println("")
+	log.Println("🎉 Setup completed successfully!")
+	log.Println("📝 Default admin credentials:")
+	log.Println("   Username: admin")
+	log.Println("   Password: admin123")
+	log.Println("")
+	log.Println("🔗 Start server with: go run cmd/api/main.go")
+	log.Println("🌐 API will be available at: http://localhost:8080")
 }
 
 func autoMigrate(db *gorm.DB) error {
-	log.Println("Running auto migrations...")
+	log.Println("📋 Running auto migrations...")
 
-	// Define all models to migrate
+	// Define all models to migrate in correct order
 	models := []interface{}{
 		&models.Role{},
 		&models.User{},
@@ -86,14 +91,14 @@ func autoMigrate(db *gorm.DB) error {
 		if err := db.AutoMigrate(model); err != nil {
 			return fmt.Errorf("failed to migrate %T: %w", model, err)
 		}
-		log.Printf("Migrated: %T", model)
+		log.Printf("✅ Migrated: %T", model)
 	}
 
 	return nil
 }
 
 func seedEnhancedPermissions(db *gorm.DB) error {
-	log.Println("Seeding enhanced permissions...")
+	log.Println("🔑 Seeding enhanced permissions...")
 
 	// Check if permissions already exist
 	var count int64
@@ -102,31 +107,31 @@ func seedEnhancedPermissions(db *gorm.DB) error {
 	}
 
 	if count > 0 {
-		log.Println("Permissions already exist, skipping...")
+		log.Println("📝 Permissions already exist, skipping...")
 		return nil
 	}
 
 	// Insert all predefined permissions
 	for _, permission := range models.PreDefinedPermissions {
 		if err := db.Create(&permission).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to create permission %s: %w", permission.PermissionName, err)
 		}
 	}
-	log.Printf("Created %d permissions", len(models.PreDefinedPermissions))
+	log.Printf("✅ Created %d permissions", len(models.PreDefinedPermissions))
 
 	// Insert permission groups
 	for _, group := range models.PreDefinedPermissionGroups {
 		if err := db.Create(&group).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to create permission group %s: %w", group.GroupName, err)
 		}
 	}
-	log.Printf("Created %d permission groups", len(models.PreDefinedPermissionGroups))
+	log.Printf("✅ Created %d permission groups", len(models.PreDefinedPermissionGroups))
 
 	return nil
 }
 
 func seedRolesWithPermissions(db *gorm.DB) error {
-	log.Println("Seeding roles with permissions...")
+	log.Println("👥 Seeding roles with permissions...")
 
 	// Create default roles if they don't exist
 	defaultRoles := []models.Role{
@@ -142,12 +147,14 @@ func seedRolesWithPermissions(db *gorm.DB) error {
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				if err := db.Create(&role).Error; err != nil {
-					return err
+					return fmt.Errorf("failed to create role %s: %w", role.RoleName, err)
 				}
-				log.Printf("Created role: %s", role.RoleName)
+				log.Printf("✅ Created role: %s", role.RoleName)
 			} else {
 				return err
 			}
+		} else {
+			log.Printf("📝 Role already exists: %s", role.RoleName)
 		}
 	}
 
@@ -168,7 +175,7 @@ func seedRolesWithPermissions(db *gorm.DB) error {
 			"SYSTEM_VIEW", "SYSTEM_VIEW_LOGS", "SYSTEM_MANAGE_SETTINGS", "SYSTEM_BACKUP", "SYSTEM_RESTORE",
 		},
 		"ADMIN": {
-			// Admin level access (same as SUPER_ADMIN for now)
+			// Admin level access (same as SUPER_ADMIN except some system functions)
 			"USER_VIEW", "USER_CREATE", "USER_UPDATE", "USER_DELETE", "USER_ASSIGN_ROLES", "USER_RESET_PASSWORD",
 			"ROLE_VIEW", "ROLE_CREATE", "ROLE_UPDATE", "ROLE_DELETE", "ROLE_ASSIGN_PERMISSIONS",
 			"PRODUCT_VIEW", "PRODUCT_CREATE", "PRODUCT_UPDATE", "PRODUCT_DELETE", "PRODUCT_EXPORT", "PRODUCT_IMPORT",
@@ -179,6 +186,7 @@ func seedRolesWithPermissions(db *gorm.DB) error {
 			"WAREHOUSE_VIEW", "WAREHOUSE_CREATE", "WAREHOUSE_UPDATE", "WAREHOUSE_DELETE", "WAREHOUSE_TRANSFER",
 			"FINANCE_VIEW", "FINANCE_CREATE", "FINANCE_UPDATE", "FINANCE_DELETE", "FINANCE_APPROVE",
 			"REPORT_VIEW", "REPORT_CREATE", "REPORT_EXPORT",
+			"SYSTEM_VIEW",
 		},
 		"MANAGER": {
 			// Manager level access
@@ -205,48 +213,54 @@ func seedRolesWithPermissions(db *gorm.DB) error {
 		},
 	}
 
+	// Get system user ID for granted_by field
+	systemUserID := uint(1) // Will be created admin user
+
 	// Assign permissions to roles
 	for roleName, permissionNames := range rolePermissions {
 		var role models.Role
 		if err := db.Where("role_name = ?", roleName).First(&role).Error; err != nil {
-			log.Printf("Role %s not found, skipping...", roleName)
+			log.Printf("⚠️  Role %s not found, skipping...", roleName)
 			continue
 		}
 
-		// Clear existing permissions
+		// Clear existing permissions for this role
 		if err := db.Where("role_id = ?", role.ID).Delete(&models.RolePermission{}).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to clear existing permissions for role %s: %w", roleName, err)
 		}
 
 		// Assign new permissions
+		assignedCount := 0
 		for _, permName := range permissionNames {
 			var permission models.Permission
 			if err := db.Where("permission_name = ?", permName).First(&permission).Error; err != nil {
-				log.Printf("Permission %s not found, skipping...", permName)
+				log.Printf("⚠️  Permission %s not found, skipping...", permName)
 				continue
 			}
 
 			rolePermission := models.RolePermission{
 				RoleID:       role.ID,
 				PermissionID: permission.ID,
-				GrantedBy:    1, // System user
+				GrantedBy:    systemUserID,
 				GrantedAt:    time.Now(),
 				IsActive:     true,
 			}
 
 			if err := db.Create(&rolePermission).Error; err != nil {
-				return err
+				log.Printf("⚠️  Failed to assign permission %s to role %s: %v", permName, roleName, err)
+				continue
 			}
+			assignedCount++
 		}
 
-		log.Printf("Assigned %d permissions to role %s", len(permissionNames), roleName)
+		log.Printf("✅ Assigned %d permissions to role %s", assignedCount, roleName)
 	}
 
 	return nil
 }
 
 func seedAdminUser(db *gorm.DB) error {
-	log.Println("Seeding admin user...")
+	log.Println("👤 Seeding admin user...")
 
 	// Check if admin user exists
 	var adminUser models.User
@@ -256,7 +270,7 @@ func seedAdminUser(db *gorm.DB) error {
 			// Create admin user
 			passwordHash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to hash password: %w", err)
 			}
 
 			adminUser = models.User{
@@ -267,15 +281,15 @@ func seedAdminUser(db *gorm.DB) error {
 			}
 
 			if err := db.Create(&adminUser).Error; err != nil {
-				return err
+				return fmt.Errorf("failed to create admin user: %w", err)
 			}
 
-			log.Println("Created admin user")
+			log.Println("✅ Created admin user")
 		} else {
-			return err
+			return fmt.Errorf("error checking admin user: %w", err)
 		}
 	} else {
-		log.Println("Admin user already exists")
+		log.Println("📝 Admin user already exists")
 	}
 
 	// Assign SUPER_ADMIN role
@@ -283,7 +297,7 @@ func seedAdminUser(db *gorm.DB) error {
 	if err := db.Where("role_name = ?", "SUPER_ADMIN").First(&superAdminRole).Error; err != nil {
 		// Fallback to ADMIN role
 		if err := db.Where("role_name = ?", "ADMIN").First(&superAdminRole).Error; err != nil {
-			return err
+			return fmt.Errorf("no admin role found: %w", err)
 		}
 	}
 
@@ -300,22 +314,22 @@ func seedAdminUser(db *gorm.DB) error {
 			}
 
 			if err := db.Create(&userRole).Error; err != nil {
-				return err
+				return fmt.Errorf("failed to assign role to admin user: %w", err)
 			}
 
-			log.Printf("Assigned %s role to admin user", superAdminRole.RoleName)
+			log.Printf("✅ Assigned %s role to admin user", superAdminRole.RoleName)
 		} else {
-			return err
+			return fmt.Errorf("error checking role assignment: %w", err)
 		}
 	} else {
-		log.Printf("%s role already assigned to admin user", superAdminRole.RoleName)
+		log.Printf("📝 %s role already assigned to admin user", superAdminRole.RoleName)
 	}
 
 	return nil
 }
 
 func seedSampleData(db *gorm.DB) error {
-	log.Println("Seeding sample data...")
+	log.Println("📦 Seeding sample data...")
 
 	// Seed product categories
 	categories := []models.ProductCategory{
@@ -332,12 +346,13 @@ func seedSampleData(db *gorm.DB) error {
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				if err := db.Create(&category).Error; err != nil {
-					return err
+					log.Printf("⚠️  Failed to create category %s: %v", category.CategoryName, err)
+				} else {
+					log.Printf("✅ Created category: %s", category.CategoryName)
 				}
-				log.Printf("Created category: %s", category.CategoryName)
-			} else {
-				return err
 			}
+		} else {
+			log.Printf("📝 Category already exists: %s", category.CategoryName)
 		}
 	}
 
@@ -356,26 +371,27 @@ func seedSampleData(db *gorm.DB) error {
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				if err := db.Create(&productName).Error; err != nil {
-					return err
+					log.Printf("⚠️  Failed to create product name %s: %v", productName.ProductNameEN, err)
+				} else {
+					log.Printf("✅ Created product name: %s", productName.ProductNameEN)
 				}
-				log.Printf("Created product name: %s", productName.ProductNameEN)
-			} else {
-				return err
 			}
+		} else {
+			log.Printf("📝 Product name already exists: %s", productName.ProductNameEN)
 		}
 	}
 
-	// Seed a few sample products
+	// Create a few sample products
 	var cottonCategory models.ProductCategory
 	var cottonSingleJersey models.ProductName
 
 	if err := db.Where("category_name = ?", "Vải Thun Cotton").First(&cottonCategory).Error; err != nil {
-		log.Printf("Warning: Could not find cotton category: %v", err)
+		log.Printf("⚠️  Could not find cotton category: %v", err)
 		return nil // Not critical, skip sample products
 	}
 
 	if err := db.Where("sku_parent = ?", "SY1015").First(&cottonSingleJersey).Error; err != nil {
-		log.Printf("Warning: Could not find cotton single jersey: %v", err)
+		log.Printf("⚠️  Could not find cotton single jersey: %v", err)
 		return nil // Not critical, skip sample products
 	}
 
@@ -422,11 +438,13 @@ func seedSampleData(db *gorm.DB) error {
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
 				if err := db.Create(&sample).Error; err != nil {
-					log.Printf("Error creating sample product %s: %v", sample.SKU, err)
-					continue
+					log.Printf("⚠️  Failed to create sample product %s: %v", sample.SKU, err)
+				} else {
+					log.Printf("✅ Created sample product: %s", sample.SKU)
 				}
-				log.Printf("Created sample product: %s", sample.SKU)
 			}
+		} else {
+			log.Printf("📝 Sample product already exists: %s", sample.SKU)
 		}
 	}
 
