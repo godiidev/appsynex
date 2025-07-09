@@ -1,8 +1,7 @@
-# File: Makefile
-# Tạo tại: Makefile (root của project)  
-# Mục đích: Các lệnh tiện ích để build, run, test project với enhanced permission system
+# Makefile for AppSynex API
+# Optimized for Docker development workflow
 
-.PHONY: help build run test clean setup-db seed docker-up docker-down
+.PHONY: help build run test clean docker-up docker-down setup dev
 
 # Variables
 BINARY_NAME=appsynex-api
@@ -10,162 +9,167 @@ MAIN_PATH=./cmd/api
 BUILD_DIR=./bin
 
 help: ## Show this help message
+	@echo 'AppSynex API - Development Commands'
+	@echo ''
 	@echo 'Usage: make [target]'
 	@echo ''
-	@echo 'Targets:'
+	@echo 'Development:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-build: ## Build the application
-	@echo "Building application..."
-	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
-	@echo "Build completed: $(BUILD_DIR)/$(BINARY_NAME)"
+# === DEVELOPMENT COMMANDS ===
+dev: ## Start full development environment (recommended)
+	@echo "🚀 Starting development environment..."
+	@make docker-up
+	@echo "✅ Development environment ready!"
+	@echo "   API: http://localhost:8081"
+	@echo "   phpMyAdmin: http://localhost:8082"
+	@echo "   MySQL: localhost:3307"
 
-run: ## Run the application
-	@echo "Running application..."
-	@go run $(MAIN_PATH)
+setup: ## First time setup
+	@echo "🔧 Setting up project for first time..."
+	@echo "1. Copying environment file..."
+	@cp .env.example .env 2>/dev/null || echo "   .env already exists"
+	@echo "2. Installing dependencies..."
+	@go mod download && go mod tidy
+	@echo "3. Starting development environment..."
+	@make dev
+	@echo ""
+	@echo "✅ Setup completed!"
+	@echo "   Access API at: http://localhost:8081"
+	@echo "   Access phpMyAdmin at: http://localhost:8082"
 
-test: ## Run tests
-	@echo "Running tests..."
-	@go test -v ./...
+# === DOCKER COMMANDS ===
+docker-up: ## Start all Docker services
+	@echo "🐳 Starting Docker services..."
+	@docker-compose up -d --build
+	@echo "⏳ Waiting for services to be ready..."
+	@sleep 10
+	@make status
 
-clean: ## Clean build files
-	@echo "Cleaning build files..."
-	@rm -rf $(BUILD_DIR)
-	@go clean
-
-setup-db: ## Setup database with migrations and seed data
-	@echo "Setting up database..."
-	@go run scripts/setup.go
-
-seed: ## Run database seeding only
-	@echo "Running database seeding..."
-	@go run scripts/seed_enhanced_permissions.go
-
-docker-up: ## Start docker containers
-	@echo "Starting docker containers..."
-	@docker-compose up -d
-
-docker-down: ## Stop docker containers
-	@echo "Stopping docker containers..."
+docker-down: ## Stop all Docker services
+	@echo "🛑 Stopping Docker services..."
 	@docker-compose down
 
-docker-build: ## Build docker image
-	@echo "Building docker image..."
-	@docker-compose build
-
-docker-logs: ## Show docker logs
-	@docker-compose logs -f
-
-install-deps: ## Install Go dependencies
-	@echo "Installing dependencies..."
-	@go mod download
-	@go mod tidy
-
-dev: ## Start development environment
-	@echo "Starting development environment..."
-	@make docker-up
-	@sleep 10
-	@make setup-db
-	@make run
-
-setup: ## Setup project for first time
-	@echo "Setting up project for first time..."
-	@echo "1. Copying environment file..."
-	@cp .env.example .env
-	@echo "2. Installing dependencies..."
-	@make install-deps
-	@echo "3. Starting Docker services..."
-	@make docker-up
-	@echo "4. Waiting for database to be ready..."
-	@sleep 15
-	@echo "5. Setting up database and seeding data..."
-	@make setup-db
-	@echo ""
-	@echo "Setup completed! You can now:"
-	@echo "  - Run 'make run' to start the server"
-	@echo "  - Login with username: admin, password: admin123"
-	@echo "  - Access the API at http://localhost:8080"
-
-reset-db: ## Reset database (WARNING: This will delete all data)
-	@echo "WARNING: This will delete all data in the database!"
-	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
-	@echo "Resetting database..."
+docker-restart: ## Restart Docker services
+	@echo "🔄 Restarting Docker services..."
 	@make docker-down
-	@docker volume rm appsynex_mysql_data || true
 	@make docker-up
-	@sleep 15
-	@make setup-db
-	@echo "Database reset completed!"
 
-logs: ## Show application logs
-	@docker-compose logs -f api
+docker-rebuild: ## Rebuild and restart Docker services
+	@echo "🔨 Rebuilding Docker services..."
+	@docker-compose down
+	@docker-compose build --no-cache
+	@docker-compose up -d
+	@make status
 
-mysql-shell: ## Access MySQL shell
-	@docker-compose exec mysql mysql -u root -prootpassword appsynex
+# === LOCAL DEVELOPMENT ===
+run-local: ## Run API locally (requires Docker services)
+	@echo "🏃 Running API locally..."
+	@echo "📋 Make sure Docker services are running: make docker-services"
+	@DB_HOST=localhost DB_PORT=3307 DB_USER=appsynex_user DB_PASS=appsynex_password DB_NAME=appsynex PORT=8080 go run $(MAIN_PATH)
 
-status: ## Show status of services
-	@echo "Docker services status:"
-	@docker-compose ps
-	@echo ""
-	@echo "Database connection test:"
-	@docker-compose exec mysql mysqladmin -u root -prootpassword ping
+docker-services: ## Start only MySQL and phpMyAdmin
+	@echo "🗄️ Starting database services..."
+	@docker-compose up -d mysql phpmyadmin
+	@echo "⏳ Waiting for MySQL to be ready..."
+	@sleep 10
+	@echo "✅ Database services ready!"
 
-backup-db: ## Backup database
-	@echo "Creating database backup..."
-	@mkdir -p backups
-	@docker-compose exec mysql mysqldump -u root -prootpassword appsynex > backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "Backup completed in backups/ directory"
+build: ## Build binary locally
+	@echo "🔨 Building application..."
+	@mkdir -p $(BUILD_DIR)
+	@go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@echo "✅ Build completed: $(BUILD_DIR)/$(BINARY_NAME)"
+
+# === TESTING & QUALITY ===
+test: ## Run tests
+	@echo "🧪 Running tests..."
+	@go test -v ./...
+
+test-coverage: ## Run tests with coverage
+	@echo "🧪 Running tests with coverage..."
+	@go test -v -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "📊 Coverage report: coverage.html"
 
 format: ## Format Go code
-	@echo "Formatting Go code..."
+	@echo "🎨 Formatting Go code..."
 	@go fmt ./...
-	@echo "Code formatted"
+	@echo "✅ Code formatted"
 
-lint: ## Run linter
-	@echo "Running linter..."
-	@golangci-lint run ./...
+lint: ## Run linter (requires golangci-lint)
+	@echo "🔍 Running linter..."
+	@golangci-lint run ./... || echo "Install golangci-lint first: https://golangci-lint.run/usage/install/"
 
-security-check: ## Run security checks
-	@echo "Running security checks..."
-	@gosec ./...
-
-mod-tidy: ## Tidy go modules
-	@echo "Tidying go modules..."
+tidy: ## Tidy go modules
+	@echo "🧹 Tidying go modules..."
 	@go mod tidy
-	@echo "Modules tidied"
+	@echo "✅ Modules tidied"
 
-generate: ## Generate code (if needed)
-	@echo "Generating code..."
-	@go generate ./...
+# === MONITORING & DEBUGGING ===
+logs: ## Show API logs
+	@echo "📋 Showing API logs..."
+	@docker-compose logs -f api
 
-deps-update: ## Update dependencies
-	@echo "Updating dependencies..."
-	@go get -u ./...
-	@go mod tidy
-	@echo "Dependencies updated"
+logs-all: ## Show all service logs
+	@echo "📋 Showing all service logs..."
+	@docker-compose logs -f
 
-release: ## Build release version
-	@echo "Building release version..."
-	@make clean
-	@mkdir -p $(BUILD_DIR)
-	@CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
-	@CGO_ENABLED=0 GOOS=windows go build -ldflags="-w -s" -o $(BUILD_DIR)/$(BINARY_NAME)-windows.exe $(MAIN_PATH)
-	@CGO_ENABLED=0 GOOS=darwin go build -ldflags="-w -s" -o $(BUILD_DIR)/$(BINARY_NAME)-macos $(MAIN_PATH)
-	@echo "Release builds completed in $(BUILD_DIR)/"
+status: ## Show service status
+	@echo "📊 Service Status:"
+	@docker-compose ps
+	@echo ""
+	@echo "🔍 Health Check:"
+	@curl -s http://localhost:8081/ > /dev/null && echo "✅ API is responding" || echo "❌ API is not responding"
+	@curl -s http://localhost:8082/ > /dev/null && echo "✅ phpMyAdmin is responding" || echo "❌ phpMyAdmin is not responding"
 
-check-env: ## Check if .env file exists
-	@if [ ! -f .env ]; then \
-		echo "Error: .env file not found. Run 'make setup' first."; \
-		exit 1; \
-	fi
+mysql-shell: ## Access MySQL shell
+	@echo "🗄️ Opening MySQL shell..."
+	@docker-compose exec mysql mysql -u root -prootpassword appsynex
 
-serve: check-env ## Start the server (alias for run)
-	@make run
+# === CLEANUP ===
+clean: ## Clean build files and Docker resources
+	@echo "🧹 Cleaning up..."
+	@rm -rf $(BUILD_DIR)
+	@go clean
+	@docker-compose down --remove-orphans
+	@docker system prune -f
 
-quick-start: ## Quick start for existing setup
-	@echo "Quick starting AppSynex API..."
-	@make docker-up
-	@sleep 5
-	@make run
+clean-all: ## Clean everything including volumes (WARNING: deletes data)
+	@echo "⚠️  WARNING: This will delete all data!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@echo "🧹 Cleaning everything..."
+	@docker-compose down -v --remove-orphans
+	@docker system prune -af
+	@docker volume prune -f
+	@rm -rf $(BUILD_DIR)
+	@echo "✅ Everything cleaned!"
+
+# === UTILITIES ===
+backup-db: ## Backup database
+	@echo "💾 Creating database backup..."
+	@mkdir -p backups
+	@docker-compose exec mysql mysqladump -u root -prootpassword appsynex > backups/backup_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "✅ Backup completed in backups/ directory"
+
+install-tools: ## Install development tools
+	@echo "🔧 Installing development tools..."
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/securecodewarrior/gosec/cmd/gosec@latest
+	@echo "✅ Tools installed"
+
+health: ## Check system health
+	@echo "🏥 System Health Check:"
+	@echo "📋 Docker status:"
+	@docker --version
+	@echo "📋 Go version:"
+	@go version
+	@echo "📋 Services:"
+	@make status
+
+# === QUICK COMMANDS ===
+start: dev ## Alias for dev
+stop: docker-down ## Alias for docker-down
+restart: docker-restart ## Alias for docker-restart
+rebuild: docker-rebuild ## Alias for docker-rebuild
