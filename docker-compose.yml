@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: appsynex_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: appsynex
+      MYSQL_USER: appsynex_user
+      MYSQL_PASSWORD: appsynex_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - appsynex_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: appsynex_api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=appsynex_user
+      - DB_PASS=appsynex_password
+      - DB_NAME=appsynex
+      - JWT_SECRET=your_super_secret_jwt_key_here
+      - PORT=8080
+      - ENV=development
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - appsynex_network
+    volumes:
+      - ./logs:/root/logs  # Mount logs directory if needed
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: appsynex_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: rootpassword
+      PMA_ARBITRARY: 1
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - appsynex_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  appsynex_network:
+    driver: bridge
